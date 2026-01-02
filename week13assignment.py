@@ -5,7 +5,6 @@ print("================================================")
 print(" FIND YOUR NEXT READ WITH RANDOM BOOOK WHEEL📖")
 print("================================================\n")
 genre = str(input("Choose the book genre(e.g. fantasy, romance, mystery, sci-fi): "))
-# print("================================================")
 genre = genre.strip()
 if genre == "":
     print("You didn't type anything! 'Fantasy' will be used to search by default")
@@ -18,32 +17,43 @@ params = {
     'limit': 50,
     'fields': "title,author_name,first_publish_year,edition_count,key"
     }
-try:
-    response = requests.get(url, params=params)
-    response.raise_for_status()
+
+response = requests.get(url, params=params)
+if response.status_code == 200:
+    print('Connection successfull')
     data = response.json()
     all_books = data.get("docs")
-except:
-    print("Oh no! Couldn't connect to the book website.")
-    print("Check your internet or try again later.")
-
+elif response.status_code == 404:
+    print('Page not found')
+elif response.status_code == 500:
+    print("Server error, try again later")
+else:
+    print(f"Other status: {response.status_code}")
+   
 modern_books = []
 for book in all_books:
     year = book.get("first_publish_year")
     editions = book.get("edition_count", 0)
-    if year is not None and year >= 1950:
-        if editions >= 20:
-           book["edition_count"] = editions
-           modern_books.append(book)
+    if year is not None:
+        try:
+            if int(year) >= 1950 and editions >= 20:
+                modern_books.append(book)
+        except (TypeError, IndexError, KeyError, ValueError):
+            continue 
     
 for i in range(len(modern_books)):
     for j in range(len(modern_books) - 1):
-        book1_editions = modern_books[j].get("edition_count", 0)
-        book2_editions = modern_books[j + 1].get("edition_count", 0)
-        if book1_editions < book2_editions:
-            temporary = modern_books[j]
-            modern_books[j] = modern_books[j + 1]
-            modern_books[j + 1] = temporary
+        try:
+            book1_editions = modern_books[j].get("edition_count", 0)
+            book2_editions = modern_books[j + 1].get("edition_count", 0)
+            
+            if book1_editions < book2_editions:
+                temporary = modern_books[j]
+                modern_books[j] = modern_books[j + 1]
+                modern_books[j + 1] = temporary
+        except (IndexError, TypeError, ValueError, NameError):
+            continue  
+    
 if len(modern_books) == 0:
     print(f"Sorry, could not find any '{genre}' books published after 1950")
     print("Try another genre for more options...")
